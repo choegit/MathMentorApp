@@ -4,6 +4,8 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -146,7 +148,9 @@ internal fun parseChatCompletion(
 fun MathTutorScreen(viewModel: MathTutorViewModel = viewModel()) {
     Column(modifier = Modifier.padding(16.dp)) {
         Text("📘 Math Mentor for Kids", style = MaterialTheme.typography.headlineSmall)
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Input box
         OutlinedTextField(
             value = viewModel.question,
             onValueChange = viewModel::onQuestionChange,
@@ -156,14 +160,41 @@ fun MathTutorScreen(viewModel: MathTutorViewModel = viewModel()) {
         Spacer(modifier = Modifier.height(8.dp))
         Button(
             onClick = viewModel::askTutor,
-            enabled = !viewModel.loading
+            enabled = !viewModel.loading && viewModel.question.isNotBlank()
         ) {
             if (viewModel.loading) CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
             else Text("Ask Tutor")
         }
+
         Spacer(modifier = Modifier.height(16.dp))
-        if (viewModel.response.isNotEmpty()) {
-            Text(text = viewModel.response, style = MaterialTheme.typography.bodyLarge)
+
+        // Output box
+        Text("Tutor's answer", style = MaterialTheme.typography.labelLarge)
+        Spacer(modifier = Modifier.height(4.dp))
+        OutlinedCard(modifier = Modifier.fillMaxWidth().weight(1f)) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(16.dp)
+            ) {
+                when {
+                    viewModel.loading -> Text(
+                        "Thinking…",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    viewModel.response.isNotEmpty() -> Text(
+                        text = viewModel.response,
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                    else -> Text(
+                        "The tutor's answer will appear here.",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
         }
     }
 }
