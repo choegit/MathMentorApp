@@ -42,13 +42,18 @@ To enable AI features in the app:
 
 1. Visit: [OpenAI API Keys](https://platform.openai.com/account/api-keys)
 2. Create a new secret key
-3. Replace `OPENAI_API_KEY` in the code:
+3. Add it to `local.properties` in the project root (this file is gitignored and never committed):
 
-```kotlin
-.header("Authorization", "Bearer OPENAI_API_KEY")
+```properties
+OPENAI_API_KEY=sk-your-key-here
 ```
 
-> Never hardcode API keys in a production release. Use encrypted storage or route through a secure backend.
+The Gradle build reads this value and exposes it to the app as `BuildConfig.OPENAI_API_KEY`
+(see `app/build.gradle.kts`), so the key never needs to be hardcoded in source.
+
+> Do not hardcode API keys in source or ship them in a release APK. `BuildConfig` keeps the
+> key out of version control but it is still embedded in the built APK — for production,
+> route requests through a secure backend rather than calling OpenAI directly from the app.
 
 ---
 
