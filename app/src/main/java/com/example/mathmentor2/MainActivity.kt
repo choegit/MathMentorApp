@@ -84,30 +84,12 @@ class MathTutorViewModel : ViewModel() {
                 .build()
 
             client.newCall(request).execute().use { httpResponse ->
-                val responseBody = httpResponse.body?.string()
-
-                if (!httpResponse.isSuccessful) {
-                    // Surface OpenAI's actual error message when present.
-                    val apiMessage = responseBody
-                        ?.let { runCatching { JSONObject(it).getJSONObject("error").getString("message") }.getOrNull() }
-                    return@withContext "Error: ${apiMessage ?: "${httpResponse.code} ${httpResponse.message}"}"
-                }
-
-                if (responseBody.isNullOrBlank()) {
-                    return@withContext "Error: empty response from server."
-                }
-
-                val jsonResponse = JSONObject(responseBody)
-                if (!jsonResponse.has("choices")) {
-                    return@withContext "Error: unexpected response (no 'choices')."
-                }
-
-                jsonResponse
-                    .getJSONArray("choices")
-                    .getJSONObject(0)
-                    .getJSONObject("message")
-                    .getString("content")
-                    .trim()
+                parseChatCompletion(
+                    isSuccessful = httpResponse.isSuccessful,
+                    code = httpResponse.code,
+                    httpMessage = httpResponse.message,
+                    body = httpResponse.body?.string(),
+                )
             }
         } catch (e: IOException) {
             // Network-level failures: no connectivity, DNS, timeouts.
@@ -124,6 +106,40 @@ class MathTutorViewModel : ViewModel() {
             "step-by-step by asking simple follow-up questions, giving relatable examples, and " +
             "confirming understanding before moving forward. Use a warm tone. Make it fun and friendly."
     }
+}
+
+/**
+ * Turns an OpenAI Chat Completions HTTP response into either the assistant's text or a
+ * user-facing `"Error: ..."` message. Pure (no I/O) and never throws, so it is unit-testable.
+ */
+internal fun parseChatCompletion(
+    isSuccessful: Boolean,
+    code: Int,
+    httpMessage: String,
+    body: String?,
+): String {
+    if (!isSuccessful) {
+        // Surface OpenAI's actual error message when present, else fall back to the HTTP status.
+        val apiMessage = body?.let {
+            runCatching { JSONObject(it).getJSONObject("error").getString("message") }.getOrNull()
+        }
+        return "Error: ${apiMessage ?: "$code $httpMessage"}"
+    }
+
+    if (body.isNullOrBlank()) {
+        return "Error: empty response from server."
+    }
+
+    val json = runCatching { JSONObject(body) }.getOrNull()
+        ?: return "Error: unexpected response (couldn't parse)."
+
+    return runCatching {
+        json.getJSONArray("choices")
+            .getJSONObject(0)
+            .getJSONObject("message")
+            .getString("content")
+            .trim()
+    }.getOrElse { "Error: unexpected response (no 'choices')." }
 }
 
 @Composable
